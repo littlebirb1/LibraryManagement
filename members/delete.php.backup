@@ -1,0 +1,37 @@
+<?php
+session_start();
+require_once '../includes/db_connect.php';
+
+if (!isset($_SESSION['user_id'])) {
+    header("Location: ../auth/login.php");
+    exit();
+}
+
+if (!isset($_GET['id'])) {
+    header("Location: index.php");
+    exit();
+}
+
+$id = $_GET['id'];
+
+try {
+    // Check if member has any active borrowings
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM borrowings WHERE member_id = ? AND status IN ('borrowed', 'overdue')");
+    $stmt->execute([$id]);
+    $active_borrowings = $stmt->fetchColumn();
+    
+    if ($active_borrowings > 0) {
+        $_SESSION['error'] = "Cannot delete member with active book borrowings.";
+    } else {
+        $stmt = $pdo->prepare("DELETE FROM members WHERE id = ?");
+        $stmt->execute([$id]);
+        
+        $_SESSION['success'] = "Member deleted successfully!";
+    }
+} catch (PDOException $e) {
+    $_SESSION['error'] = "Error deleting member: " . $e->getMessage();
+}
+
+header("Location: index.php");
+exit();
+?>
